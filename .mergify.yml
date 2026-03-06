@@ -1,1 +1,59 @@
 queue_rules: []
+pull_request_rules:
+  - name: Label Mergify Stacks PRs
+    description: Pull requests that are part of a Mergify stack should be labeled as such
+    conditions:
+      - "commits[0].commit_message ~= (?m)Change-Id:"
+    actions:
+      label:
+        toggle:
+          - stack
+  - name: Automatic merge
+    description: Merge when PR passes all branch protection and has label automerge
+    conditions:
+      - label = automerge
+    actions:
+      merge:
+  - name: Label conflicting pull requests
+    description: Add a label to a pull request with conflict to spot it easily
+    conditions:
+      - conflict
+      - -closed
+    actions:
+      label:
+        toggle:
+          - conflict
+  - name: Notify when a PR is removed from the queue
+    description: Notify the PR author when its pull request is removed from the merge queue.
+    conditions:
+      - queue-dequeue-reason != none
+      - queue-dequeue-reason != pr-merged
+    actions:
+      comment:
+        message: >
+          Hey @{{author}}, your pull request has been dequeued due to the
+          following reason: {{queue_dequeue_reason}}.
+
+          Sorry about that, but you can requeue the PR by using `@mergifyio
+          queue` if you think this was a mistake.
+  - name: Assign t-shirt size to PR
+    description: Assign a t-shirt size label to a pull request based on the number
+      of lines changed.
+    conditions:
+      - "#modified-lines >= 100"
+      - "#modified-lines < 500"
+    actions:
+      label:
+        toggle:
+          - size/L
+  - name: Request review from team
+    description: Request review from a specific team when checks are green.
+    conditions:
+      - -closed
+      - "#approved-reviews-by = 0"
+      - "#changes-requested-reviews-by = 0"
+      - review-requested != @TEAM_NAME_HERE
+    actions:
+      request_reviews:
+        teams:
+          - TEAM_NAME_HERE
